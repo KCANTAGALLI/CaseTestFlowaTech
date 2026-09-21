@@ -1,0 +1,55 @@
+# Build
+bin/
+obj/
+publish/
+artifacts/
+*.dll
+*.pdb
+*.exe
+
+# IDE
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.swp
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Terraform
+**/.terraform/
+**/.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+*.tfvars
+!terraform/terraform.tfvars.example
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+
+# Secrets / local env
+.env
+.env.*
+*.pem
+*.key
+credentials
+aws-credentials*
+
+# Lambda packages
+lambda/**/package/
+lambda/**/*.zip
+**/__pycache__/
+*.py[cod]
+
+# Logs
+*.log
+logs/
+
+# Dotnet
+project.lock.json
+project.fragment.lock.json

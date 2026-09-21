@@ -1,0 +1,25 @@
+aws_region     = "sa-east-1"
+project_name   = "status-api"
+environment    = "dev"
+vpc_cidr       = "10.40.0.0/16"
+
+# Restrinja para o(s) IP(s) de quem vai validar o endpoint.
+# Exemplo: ["203.0.113.10/32"]
+allowed_cidrs  = ["0.0.0.0/0"]
+
+container_port    = 5000
+# 0 até existir imagem no ECR; o pipeline sobe para 1 no deploy
+ecs_desired_count = 0
+# min 0 é necessário para o Lambda de stop (18h) conseguir zerar as tasks
+ecs_min_capacity  = 0
+ecs_max_capacity  = 4
+
+ec2_instance_type = "t3.micro"
+# Deixe vazio se for usar só SSM Session Manager
+ec2_key_name      = ""
+
+# E-mail que receberá as notificações dos alarmes (precisa confirmar a inscrição SNS)
+alarm_email = "seu-email@exemplo.com"
+
+schedule_timezone = "America/Sao_Paulo"
+ecr_image_tag     = "latest"
