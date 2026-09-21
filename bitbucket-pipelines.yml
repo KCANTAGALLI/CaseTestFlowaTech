@@ -1,0 +1,91 @@
+image: atlassian/default-image:4
+
+definitions:
+  services:
+    docker:
+      memory: 3072
+
+  caches:
+    dotnet: ~/.nuget/packages
+
+  steps:
+    - step: &build-push-ecr
+        name: Build container e push ECR
+        services:
+          - docker
+        script:
+          - apt-get update && apt-get install -y python3-pip unzip
+          - pip3 install awscli --upgrade
+          - export IMAGE_TAG="${BITBUCKET_COMMIT:0:7}"
+          - echo "IMAGE_TAG=$IMAGE_TAG"
+          - aws ecr get-login-password --region "$AWS_DEFAULT_REGION" | docker login --username AWS --password-stdin "$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com"
+          - docker build -t "$ECR_REPOSITORY_URI:$IMAGE_TAG" -t "$ECR_REPOSITORY_URI:latest" .
+          - docker push "$ECR_REPOSITORY_URI:$IMAGE_TAG"
+          - docker push "$ECR_REPOSITORY_URI:latest"
+          - echo "$IMAGE_TAG" > image_tag.txt
+        artifacts:
+          - image_tag.txt
+
+    - step: &deploy-ecs
+        name: Deploy ECS Fargate
+        script:
+          - apt-get update && apt-get install -y python3-pip
+          - pip3 install awscli --upgrade
+          - export IMAGE_TAG=$(cat image_tag.txt)
+          - export IMAGE="${ECR_REPOSITORY_URI}:${IMAGE_TAG}"
+          - chmod +x scripts/deploy-ecs.sh
+          - ./scripts/deploy-ecs.sh
+
+    - step: &build-linux
+        name: Build artefato Linux
+        image: mcr.microsoft.com/dotnet/sdk:8.0
+        caches:
+          - dotnet
+        script:
+          - chmod +x scripts/build-linux-artifact.sh
+          - ./scripts/build-linux-artifact.sh
+        artifacts:
+          - artifacts/status-api-linux.tar.gz
+
+    - step: &deploy-ec2
+        name: Deploy EC2 (S3 + SSM)
+        script:
+          - apt-get update && apt-get install -y python3-pip
+          - pip3 install awscli --upgrade
+          - chmod +x scripts/deploy-ec2.sh
+          - ./scripts/deploy-ec2.sh
+
+pipelines:
+  branches:
+    main:
+      - step: *build-push-ecr
+      - step: *deploy-ecs
+      - step: *build-linux
+      - step: *deploy-ec2
+
+  custom:
+    infra-plan:
+      - step:
+          name: Terraform plan
+          image: hashicorp/terraform:1.7
+          script:
+            - cd terraform
+            - terraform init
+            - terraform plan -var-file=terraform.tfvars
+
+    infra-apply:
+      - step:
+          name: Terraform apply
+          image: hashicorp/terraform:1.7
+          script:
+            - cd terraform
+            - terraform init
+            - terraform apply -auto-approve -var-file=terraform.tfvars
+
+    deploy-only-ecs:
+      - step: *build-push-ecr
+      - step: *deploy-ecs
+
+    deploy-only-ec2:
+      - step: *build-linux
+      - step: *deploy-ec2
