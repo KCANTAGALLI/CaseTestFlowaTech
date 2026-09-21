@@ -43,6 +43,8 @@ aws-credentials*
 # Lambda packages
 lambda/**/package/
 lambda/**/*.zip
+**/__pycache__/
+*.py[cod]
 
 # Logs
 *.log
